@@ -1,0 +1,62 @@
+services:
+  zabbix-postgresql:
+    image: postgres:latest
+    container_name: zabbix-postgresql
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - zabbix-meraki-network
+    ports:
+      - "5432:5432" 
+
+  zabbix-server:
+    image: zabbix/zabbix-server-pgsql:latest
+    container_name: zabbix-server
+    environment:
+      DB_SERVER_HOST: zabbix-postgresql
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      ZBX_JAVAGATEWAY: "zabbix-java-gateway"
+      ZBX_STARTIPMIPOLLERS: "5"
+    depends_on:
+      - zabbix-postgresql
+    ports:
+      - "10051:10051"
+    networks:
+      - zabbix-meraki-network
+
+  zabbix-web:
+    image: zabbix/zabbix-web-nginx-pgsql:latest
+    container_name: zabbix-web
+    environment:
+      DB_SERVER_HOST: zabbix-postgresql
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      ZBX_SERVER_HOST: zabbix-server  
+      ZBX_SERVER_PORT: 10051
+      PHP_TZ: "America/Sao_Paulo"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - zabbix-server
+    networks:
+      - zabbix-meraki-network
+
+  zabbix-java-gateway:
+    image: zabbix/zabbix-java-gateway:latest
+    container_name: zabbix-java-gateway
+    networks:
+      - zabbix-meraki-network
+
+volumes:
+  postgres-data:
+
+networks:
+  zabbix-meraki-network:
+    driver: bridge
